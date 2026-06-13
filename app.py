@@ -55,10 +55,6 @@ bearische_divergenz = (df['Close'].iloc[-1] > df['Close'].iloc[-5]) and (df['RSI
 bullische_divergenz = (df['Close'].iloc[-1] < df['Close'].iloc[-5]) and (df['RSI'].iloc[-1] > df['RSI'].iloc[-5])
 btc_bullisch = df['BTC_USD'].iloc[-1] > df['BTC_USD'].rolling(50).mean().iloc[-1]
 
-# Black Swan Notfall-Shield (15% unter 30-Tage-Hoch)
-stop_loss_schwelle = df['High'].tail(30).max() * 0.85
-black_swan_alarm = kurs_aktuell < stop_loss_schwelle
-
 # SK-System Makro-Ziel (Welle 3)
 MAKRO_ZIEL_WELLE_3 = 700.00
 fortschritt_welle_3 = (kurs_aktuell / MAKRO_ZIEL_WELLE_3) * 100
@@ -85,13 +81,7 @@ st.progress(min(1.0, fortschritt_welle_3 / 100), text=f"Fortschritt zu Welle-3-Z
 # 4. DIE KI-ENTSCHEIDUNGS-MATRIX
 st.subheader("🤖 Strategisches Bot-Kommando")
 
-if black_swan_alarm:
-    st.error(f"💥 EMERGENCY: BLACK SWAN SHIELD TRIPPED!\n\n"
-             f"Coinbase hat die 15%-Sicherheitslinie durchbrochen.\n"
-             f"Kurs aktuell: {kurs_aktuell:.2f}€ (Stop-Schwelle: {stop_loss_schwelle:.2f}€).\n"
-             f"👉 EMPFEHLUNG: 100% KOMPLETT-VERKAUF ZUR GEWINNSICHERUNG!")
-
-elif rsi_live > dyn_ob and bearische_divergenz and kurs_aktuell >= (MAKRO_ZIEL_WELLE_3 * 0.8):
+if rsi_live > dyn_ob and bearische_divergenz and kurs_aktuell >= (MAKRO_ZIEL_WELLE_3 * 0.8):
     st.error(f"🚨 CYCLICAL TOP ERREICHT! (RSI: {rsi_live:.1f})\n\n"
              f"Die Indikatoren GLÜHEN an der Spitze der Welle.\n"
              f"👉 EMPFEHLUNG: 100% KOMPLETT-VERKAUF bei {kurs_aktuell:.2f}€!\n"
@@ -126,4 +116,3 @@ else:
             f"Der Markt befindet sich im Niemandsland. Der RSI steht stabil bei {rsi_live:.1f} "
             f"(Boden-Band bei: {dyn_os:.1f} | Top-Band bei: {dyn_ob:.1f}).\n\n"
             f"👉 HANDLUNG: Füße stillhalten, keine unüberlegten Verkäufe.")
-
