@@ -1,6 +1,7 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
+import matplotlib.pyplot as plt
 
 # 1. SMARTPHONE-LAYOUT & DEPOT-SETUP
 st.set_page_config(page_title="Coinbase Kompass", page_icon="🤖", layout="centered")
@@ -94,55 +95,52 @@ c3, c4 = st.columns(2)
 c4.metric("Buchgewinn", f"+{buchgewinn:,.2f} €")
 c3.metric("Netto-Auszahlung", f"{netto_cash:,.2f} €")
 
-# Welle-3-Fortschrittsbalken direkt unter den Vermögenswerten (Exakt wie auf Ihrem Screenshot)
 st.progress(min(1.0, (kurs_aktuell / MAKRO_ZIEL_WELLE_3)), text=f"Fortschritt zu Welle-3-Ziel (700€): {(kurs_aktuell / MAKRO_ZIEL_WELLE_3)*100:.1f}%")
 
-# 5. DIE STRATEGISCHEN WELLEN-FORTSCHRITTSBALKEN
-st.subheader("🌊 SK-System & Elliott-Wellen Radar")
+# ==============================================================================
+# 5. DIE NEUE GRAFISCHE VISUALISIERUNG (AUTOMATISCHER CHART)
+# ==============================================================================
+st.subheader("📈 Visueller Fahrplan im Chart")
 
-# Balken 1: Fortschritt der übergeordneten Korrektur (Welle 2)
+nodes_x = [0, 2, 4, 5.2, 6.0, 7.8, 8.5, 10]
+nodes_y = [31, 380, 135, 330, 230, 530, 410, 700]
+labels = ["31€", "380€", "~135€", "~330€", "230€", "~530€", "410€", "700€"]
+
+plt.style.use('dark_background')
+fig, ax = plt.subplots(figsize=(10, 4))
+ax.plot(nodes_x, nodes_y, '-', color='#1E88E5', linewidth=3)
+ax.scatter(nodes_x, nodes_y, color='#0D47A1', s=60, edgecolors='white', linewidths=1)
+
+# Dynamischer roter Punkt für Ihren aktuellen Live-Kurs im Chart
+x_pos_aktuell = 4.0 + (teilwellen_fortschritt / 100.0) * 1.2 if kurs_aktuell < 330 else (5.2 + (teilwellen_fortschritt / 100.0) * 2.6 if kurs_aktuell < 530 else 7.8 + (teilwellen_fortschritt / 100.0) * 2.2)
+ax.plot(x_pos_aktuell, kurs_aktuell, 'ro', markersize=12, markeredgecolor='white', label='AKTUELLE POSITION')
+
+for i, txt in enumerate(labels):
+    offset = (0, -18) if i in [0, 2, 4, 6] else (0, 8)
+    ax.annotate(txt, (nodes_x[i], nodes_y[i]), textcoords="offset points", xytext=offset, ha='center', fontsize=9, color='#E0E0E0')
+
+ax.set_ylim(0, 800)
+ax.grid(True, linestyle=':', alpha=0.2)
+ax.get_xaxis().set_visible(False)
+st.pyplot(fig)
+
+# 6. DIE STRATEGISCHEN WELLEN-FORTSCHRITTSBALKEN
+st.subheader("🌊 SK-System & Elliott-Wellen Radar")
 st.write(f"**Makro-Welle 2 (Korrektur-Bodenbildung):**")
 st.progress(aktueller_korrektur_fortschritt / 100, text=f"Fortschritt zum SK-Kaufbereich (~135€): {aktueller_korrektur_fortschritt:.1f}%")
 
-# Balken 2: Fortschritt der inneren Zyklus-Strukturen bis zum 700€ Top
 st.write(f"**Status im Bullenmarkt-Zyklus:** {aktuelle_teilwelle}")
 st.progress(teilwellen_fortschritt / 100, text=f"Fortschritt dieser Teilphase: {teilwellen_fortschritt:.1f}%")
 
-# 6. DIE KI-ENTSCHEIDUNGS-MATRIX
+# 7. DIE KI-ENTSCHEIDUNGS-MATRIX
 st.subheader("⚙️ Strategisches Bot-Kommando")
 
 if rsi_live > dyn_ob and bearische_divergenz and kurs_aktuell >= (MAKRO_ZIEL_WELLE_3 * 0.8):
-    st.error(f"🚨 CYCLICAL TOP ERREICHT! (RSI: {rsi_live:.1f})\n\n"
-             f"Die Indikatoren GLÜHEN an der Spitze der Welle.\n"
-             f"👉 EMPFEHLUNG: 100% KOMPLETT-VERKAUF bei {kurs_aktuell:.2f}€!\n"
-             f"Parken Sie {netto_cash:,.2f}€ auf Ihrem Verrechnungskonto.")
-
+    st.error(f"🚨 CYCLICAL TOP ERREICHT! (RSI: {rsi_live:.1f})\n\n👉 EMPFEHLUNG: 100% KOMPLETT-VERKAUF bei {kurs_aktuell:.2f}€!")
 elif rsi_live < dyn_os:
-    st.warning(f"🟢 COINBASE IM PREIS-CONDOWN! (RSI: {rsi_live:.1f})\n\n"
-               f"Das mathematische Band nach unten wurde durchbrochen. Der Preis von {kurs_aktuell:.2f}€ ist statistisch extrem günstig.")
-    
-    st.markdown("### 🔄 Ihre 2 Optionen für das geparkte Cash:")
-    st.info("**OPTION A (Aggressiver Dip-Kauf):**\n"
-            "Schlagen Sie JETZT im freien Fall zu, um den potenziell tiefsten Punkt zu sichern.")
-    
-    st.markdown("**OPTION B (Sicherer Einstieg mit Bestätigung):**")
-    if not bullische_divergenz:
-        st.write("• ❌ *Keine bullische Divergenz:* Der Verkaufsdruck am Markt ist aktuell noch hoch.")
-    else:
-        st.write("• ✅ *Bullische Divergenz aktiv:* Die Verkäufer verlieren an Kraft!")
-        
-    if not btc_bullisch:
-        st.write("• ❌ *Bitcoin schwächelt:* BTC steht unter dem SMA50. Gefahr von Mitreißeffekten.")
-    else:
-        st.write("• ✅ *Bitcoin stabilisiert sich:* Der Gesamtmarkt stützt die Aktie.")
-        
-    if bullische_divergenz and btc_bullisch:
-        st.success("👉 *Bot-Empfehlung:* ALLE Filter sind grün! Option B ist jetzt freigegeben. Kaufen!")
-    else:
-        st.error("👉 *Bot-Empfehlung:* Warten Sie noch, bis beide Warnpunkte verschwinden, um nicht in ein fallendes Messer zu greifen.")
-
+    st.warning(f"🟢 COINBASE IM PREIS-CONDOWN! (RSI: {rsi_live:.1f})")
+    st.markdown("### 🔄 Risiko-Check:")
+    st.write(f"• Bullische Divergenz am Boden: {'✅ AKTIV' if bullische_divergenz else '❌ FEHLT'}")
+    st.write(f"• Bitcoin-Trend (über SMA50): {'✅ BULLISCH' if btc_bullisch else '❌ BÄRISCH'}")
 else:
-    st.info(f"😴 STATUS: ABSOLUTES HALTEN (HODL)\n\n"
-            f"Der Markt befindet sich im Niemandsland. Der RSI steht stabil bei {rsi_live:.1f} "
-            f"(Boden-Band bei: {dyn_os:.1f} | Top-Band bei: {dyn_ob:.1f}).\n\n"
-            f"👉 HANDLUNG: Füße stillhalten, keine unüberlegten Verkäufe.")
+    st.info(f"😴 STATUS: ABSOLUTES HALTEN (HODL)\n\nDer RSI steht stabil bei {rsi_live:.1f} (Boden-Band bei: {dyn_os:.1f} | Top-Band bei: {dyn_ob:.1f}).")
