@@ -2,7 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 
-# 1. SMARTPHONE-LAYOUT & DEPOT-SETUP (HIER ANPASSEN)
+# 1. SMARTPHONE-LAYOUT & DEPOT-SETUP
 st.set_page_config(page_title="Coinbase Kompass", page_icon="🤖", layout="centered")
 
 ANZAHL_AKTIEN = 700
@@ -27,7 +27,6 @@ df = pd.DataFrame({
     'FX': fx['Close'].squeeze()
 }).dropna()
 
-# Euro-Umrechnung für Trade Republic Realismus
 df['Close'] = df['USD_Close'] / df['FX']
 df['High'] = df['USD_High'] / df['FX']
 df['Low'] = df['USD_Low'] / df['FX']
@@ -38,7 +37,7 @@ gain = delta.clip(lower=0).ewm(alpha=1/14, adjust=False).mean()
 loss = -delta.clip(upper=0).ewm(alpha=1/14, adjust=False).mean()
 df['RSI'] = 100 - (100 / (1 + gain / loss))
 
-# Volatilitäts-Bänder auf den RSI
+# Volatilitäts-Bänder auf den RSI (Bollinger Bänder)
 df['RSI_MA'] = df['RSI'].rolling(20).mean()
 df['RSI_STD'] = df['RSI'].rolling(20).std()
 df['OB'] = df['RSI_MA'] + (2 * df['RSI_STD'])
@@ -55,9 +54,28 @@ bearische_divergenz = (df['Close'].iloc[-1] > df['Close'].iloc[-5]) and (df['RSI
 bullische_divergenz = (df['Close'].iloc[-1] < df['Close'].iloc[-5]) and (df['RSI'].iloc[-1] > df['RSI'].iloc[-5])
 btc_bullisch = df['BTC_USD'].iloc[-1] > df['BTC_USD'].rolling(50).mean().iloc[-1]
 
-# SK-System Makro-Ziel (Welle 3)
+# ==============================================================================
+# 3. ADVANCED ELLIOTT-WAVE & SK-SYSTEM MATH
+# ==============================================================================
+MAKRO_START_WELLE_1 = 31.00
+MAKRO_TOP_WELLE_1 = 380.00
 MAKRO_ZIEL_WELLE_3 = 700.00
-fortschritt_welle_3 = (kurs_aktuell / MAKRO_ZIEL_WELLE_3) * 100
+
+# Berechnung Makro-Welle 2 (Korrektur-Bodenbildung zum 0.618er SK-Boden bei ~135€)
+sk_boden_welle_2 = 135.00
+spanne_korrektur = MAKRO_TOP_WELLE_1 - sk_boden_welle_2
+aktueller_korrektur_fortschritt = max(0.0, min(100.0, ((MAKRO_TOP_WELLE_1 - kurs_aktuell) / spanne_korrektur) * 100))
+
+# Fortschritts-Ermittlung innerhalb der inneren Wellen-Struktur der Welle 3
+if kurs_aktuell < 330.00:
+    aktuelle_teilwelle = "Innere Welle 1 (Erster Impuls nach oben)"
+    teilwellen_fortschritt = max(0.0, min(100.0, ((kurs_aktuell - sk_boden_welle_2) / (330.00 - sk_boden_welle_2)) * 100))
+elif kurs_aktuell >= 330.00 and kurs_aktuell < 530.00:
+    aktuelle_teilwelle = "Innere Welle 3 (Die explosive Haupt-Welle)"
+    teilwellen_fortschritt = max(0.0, min(100.0, ((kurs_aktuell - 330.00) / (530.00 - 330.00)) * 100))
+else:
+    aktuelle_teilwelle = "Innere Welle 5 (Das finale Makro-Top)"
+    teilwellen_fortschritt = max(0.0, min(100.0, ((kurs_aktuell - 530.00) / (700.00 - 530.00)) * 100))
 
 # Steuer-Kalkulation (Trade Republic Netto-Wert)
 brutto_erloes = ANZAHL_AKTIEN * kurs_aktuell
@@ -66,7 +84,7 @@ zu_versteuern = max(0, buchgewinn - STEUER_FREIBETRAG)
 reale_steuer = zu_versteuern * STEUERSATZ
 netto_cash = brutto_erloes - reale_steuer
 
-# 3. BENUTZEROBERFLÄCHE
+# 4. BENUTZEROBERFLÄCHE
 st.subheader("📊 Ihre Echtzeit-Vermögenswerte")
 c1, c2 = st.columns(2)
 c1.metric("Aktueller Kurs", f"{kurs_aktuell:.2f} €")
@@ -76,10 +94,22 @@ c3, c4 = st.columns(2)
 c4.metric("Buchgewinn", f"+{buchgewinn:,.2f} €")
 c3.metric("Netto-Auszahlung", f"{netto_cash:,.2f} €")
 
-st.progress(min(1.0, fortschritt_welle_3 / 100), text=f"Fortschritt zu Welle-3-Ziel (700€): {fortschritt_welle_3:.1f}%")
+# Welle-3-Fortschrittsbalken direkt unter den Vermögenswerten (Exakt wie auf Ihrem Screenshot)
+st.progress(min(1.0, (kurs_aktuell / MAKRO_ZIEL_WELLE_3)), text=f"Fortschritt zu Welle-3-Ziel (700€): {(kurs_aktuell / MAKRO_ZIEL_WELLE_3)*100:.1f}%")
 
-# 4. DIE KI-ENTSCHEIDUNGS-MATRIX
-st.subheader("🤖 Strategisches Bot-Kommando")
+# 5. DIE STRATEGISCHEN WELLEN-FORTSCHRITTSBALKEN
+st.subheader("🌊 SK-System & Elliott-Wellen Radar")
+
+# Balken 1: Fortschritt der übergeordneten Korrektur (Welle 2)
+st.write(f"**Makro-Welle 2 (Korrektur-Bodenbildung):**")
+st.progress(aktueller_korrektur_fortschritt / 100, text=f"Fortschritt zum SK-Kaufbereich (~135€): {aktueller_korrektur_fortschritt:.1f}%")
+
+# Balken 2: Fortschritt der inneren Zyklus-Strukturen bis zum 700€ Top
+st.write(f"**Status im Bullenmarkt-Zyklus:** {aktuelle_teilwelle}")
+st.progress(teilwellen_fortschritt / 100, text=f"Fortschritt dieser Teilphase: {teilwellen_fortschritt:.1f}%")
+
+# 6. DIE KI-ENTSCHEIDUNGS-MATRIX
+st.subheader("⚙️ Strategisches Bot-Kommando")
 
 if rsi_live > dyn_ob and bearische_divergenz and kurs_aktuell >= (MAKRO_ZIEL_WELLE_3 * 0.8):
     st.error(f"🚨 CYCLICAL TOP ERREICHT! (RSI: {rsi_live:.1f})\n\n"
@@ -97,7 +127,7 @@ elif rsi_live < dyn_os:
     
     st.markdown("**OPTION B (Sicherer Einstieg mit Bestätigung):**")
     if not bullische_divergenz:
-        st.write("• ❌ *Keine bullische Divergenz:* Der Verkaufsdruck am Markt ist aktuell hoch.")
+        st.write("• ❌ *Keine bullische Divergenz:* Der Verkaufsdruck am Markt ist aktuell noch hoch.")
     else:
         st.write("• ✅ *Bullische Divergenz aktiv:* Die Verkäufer verlieren an Kraft!")
         
